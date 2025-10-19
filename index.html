@@ -8,614 +8,605 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/lucide@latest">
+    <style>
+        [role="img"] { display: inline-block; }
+        .icon-plus::before { content: "➕"; }
+        .icon-download::before { content: "📥"; }
+        .icon-refresh::before { content: "🔄"; }
+        .icon-trash::before { content: "🗑️"; }
+        .icon-eye::before { content: "👁️"; }
+        .icon-printer::before { content: "🖨️"; }
+        .icon-chevron::before { content: "▼"; }
+        .icon-logout::before { content: "🚪"; }
+        .icon-clock::before { content: "⏱️"; }
+        .icon-close::before { content: "✕"; }
+    </style>
 </head>
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        import React, { useState, useRef, useEffect } from 'react';
-        import { Plus, Download, RotateCcw, Trash2, Eye, Printer, ChevronDown, LogOut, Clock, X } from 'lucide-react';
-        
+        const { useState, useRef, useEffect } = React;
+
         const InvoiceGenerator = () => {
-          const logoUrl = "data:image/svg+xml,%3Csvg xmlns='https://i.postimg.cc/gjSZMKk9/Real-Enterprise-Logo.png' viewBox='0 0 300 120'%3E%3Crect fill='%23FFFFFF' width='300' height='120'/%3E%3Cpath d='M30 30 L50 30 Q60 30 60 40 L60 90 Q60 100 50 100 L30 100 L30 30' fill='%231F4788' stroke='%231F4788' stroke-width='2'/%3E%3Crect x='35' y='50' width='12' height='30' fill='%23FFFFFF'/%3E%3Crect x='50' y='45' width='12' height='35' fill='%23FFFFFF'/%3E%3Crect x='65' y='50' width='12' height='30' fill='%23FFFFFF'/%3E%3Cpath d='M50 35 Q70 25 90 30' stroke='%23E67E22' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Crect x='70' y='80' width='50' height='8' fill='%239B9B9B'/%3E%3Crect x='75' y='55' width='40' height='25' fill='%239B9B9B'/%3E%3C/svg%3E";
-        
-          const [currentPage, setCurrentPage] = useState('editor'); // editor, history, preview
-          const [showProfileMenu, setShowProfileMenu] = useState(false);
-        
-          const [invoiceNumber, setInvoiceNumber] = useState(() => {
-            const saved = localStorage.getItem('invoiceNumber');
-            return saved ? parseInt(saved) : 1;
-          });
-        
-          const [invoiceHistory, setInvoiceHistory] = useState(() => {
-            const saved = localStorage.getItem('invoiceHistory');
-            return saved ? JSON.parse(saved) : [];
-          });
-        
-          const [clientInfo, setClientInfo] = useState({
-            name: '',
-            address: ''
-          });
-        
-          const [items, setItems] = useState([
-            { id: 1, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }
-          ]);
-        
-          const [totals, setTotals] = useState({
-            subtotal: 0,
-            totalGST: 0,
-            finalAmount: 0
-          });
-        
-          const [previewInvoice, setPreviewInvoice] = useState(null);
-          const invoiceRef = useRef();
-          const printRef = useRef();
-        
-          // Auto calculate totals
-          useEffect(() => {
-            let subtotal = 0;
-            let totalGST = 0;
-        
-            const updatedItems = items.map(item => {
-              const rate = parseFloat(item.rate) || 0;
-              const gstPct = parseFloat(item.gstPercent) || 0;
-        
-              const lineSubtotal = rate;
-              const gstAmount = (lineSubtotal * gstPct) / 100;
-              const total = lineSubtotal + gstAmount;
-        
-              subtotal += lineSubtotal;
-              totalGST += gstAmount;
-        
-              return { ...item, gstAmount: gstAmount.toFixed(2), total: total.toFixed(2) };
+            const logoUrl = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 120'%3E%3Crect fill='%23FFFFFF' width='300' height='120'/%3E%3Cpath d='M30 30 L50 30 Q60 30 60 40 L60 90 Q60 100 50 100 L30 100 L30 30' fill='%231F4788' stroke='%231F4788' stroke-width='2'/%3E%3Crect x='35' y='50' width='12' height='30' fill='%23FFFFFF'/%3E%3Crect x='50' y='45' width='12' height='35' fill='%23FFFFFF'/%3E%3Crect x='65' y='50' width='12' height='30' fill='%23FFFFFF'/%3E%3Cpath d='M50 35 Q70 25 90 30' stroke='%23E67E22' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3Crect x='70' y='80' width='50' height='8' fill='%239B9B9B'/%3E%3Crect x='75' y='55' width='40' height='25' fill='%239B9B9B'/%3E%3C/svg%3E";
+
+            const [currentPage, setCurrentPage] = useState('editor');
+            const [showProfileMenu, setShowProfileMenu] = useState(false);
+
+            const [invoiceNumber, setInvoiceNumber] = useState(() => {
+                const saved = localStorage.getItem('invoiceNumber');
+                return saved ? parseInt(saved) : 1;
             });
-        
-            setItems(updatedItems);
-            setTotals({
-              subtotal: subtotal.toFixed(2),
-              totalGST: totalGST.toFixed(2),
-              finalAmount: (subtotal + totalGST).toFixed(2)
+
+            const [invoiceHistory, setInvoiceHistory] = useState(() => {
+                const saved = localStorage.getItem('invoiceHistory');
+                return saved ? JSON.parse(saved) : [];
             });
-          }, [items.map(i => `${i.rate}${i.gstPercent}`).join('')]);
-        
-          const handleItemChange = (id, field, value) => {
-            setItems(items.map(item => 
-              item.id === id ? { ...item, [field]: value } : item
-            ));
-          };
-        
-          const addItem = () => {
-            const newId = Math.max(...items.map(i => i.id), 0) + 1;
-            setItems([...items, { id: newId, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }]);
-          };
-        
-          const removeItem = (id) => {
-            if (items.length > 1) {
-              setItems(items.filter(item => item.id !== id));
-            }
-          };
-        
-          const resetForm = () => {
-            setClientInfo({ name: '', address: '' });
-            setItems([{ id: 1, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }]);
-          };
-        
-          const saveInvoice = () => {
-            if (!clientInfo.name || items.some(i => !i.description)) {
-              alert('Please fill in client name and all item descriptions');
-              return;
-            }
-        
-            const newInvoice = {
-              invoiceNumber: String(invoiceNumber).padStart(4, '0'),
-              clientInfo,
-              items,
-              totals,
-              date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
-              time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
+            const [clientInfo, setClientInfo] = useState({
+                name: '',
+                address: ''
+            });
+
+            const [items, setItems] = useState([
+                { id: 1, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }
+            ]);
+
+            const [totals, setTotals] = useState({
+                subtotal: 0,
+                totalGST: 0,
+                finalAmount: 0
+            });
+
+            const [previewInvoice, setPreviewInvoice] = useState(null);
+            const printRef = useRef();
+
+            useEffect(() => {
+                let subtotal = 0;
+                let totalGST = 0;
+
+                const updatedItems = items.map(item => {
+                    const rate = parseFloat(item.rate) || 0;
+                    const gstPct = parseFloat(item.gstPercent) || 0;
+                    const lineSubtotal = rate;
+                    const gstAmount = (lineSubtotal * gstPct) / 100;
+                    const total = lineSubtotal + gstAmount;
+                    subtotal += lineSubtotal;
+                    totalGST += gstAmount;
+                    return { ...item, gstAmount: gstAmount.toFixed(2), total: total.toFixed(2) };
+                });
+
+                setItems(updatedItems);
+                setTotals({
+                    subtotal: subtotal.toFixed(2),
+                    totalGST: totalGST.toFixed(2),
+                    finalAmount: (subtotal + totalGST).toFixed(2)
+                });
+            }, [items.map(i => `${i.rate}${i.gstPercent}`).join('')]);
+
+            const handleItemChange = (id, field, value) => {
+                setItems(items.map(item => 
+                    item.id === id ? { ...item, [field]: value } : item
+                ));
             };
-        
-            const updatedHistory = [newInvoice, ...invoiceHistory];
-            setInvoiceHistory(updatedHistory);
-            localStorage.setItem('invoiceHistory', JSON.stringify(updatedHistory));
-        
-            const newNumber = invoiceNumber + 1;
-            setInvoiceNumber(newNumber);
-            localStorage.setItem('invoiceNumber', newNumber.toString());
-        
-            alert('Invoice saved successfully!');
-            resetForm();
-          };
-        
-          const openPreview = (invoice = null) => {
-            if (invoice) {
-              setPreviewInvoice(invoice);
-            } else {
-              if (!clientInfo.name || items.some(i => !i.description)) {
-                alert('Please fill in client name and all item descriptions');
-                return;
-              }
-              setPreviewInvoice({
-                invoiceNumber: String(invoiceNumber).padStart(4, '0'),
-                clientInfo,
-                items,
-                totals,
-                date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-              });
-            }
-            setCurrentPage('preview');
-          };
-        
-          const downloadPDF = () => {
-            if (!previewInvoice) return;
-        
-            const element = printRef.current;
-            const opt = {
-              margin: 10,
-              filename: `Invoice-${previewInvoice.invoiceNumber}.pdf`,
-              image: { type: 'jpeg', quality: 0.98 },
-              html2canvas: { scale: 2 },
-              jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+
+            const addItem = () => {
+                const newId = Math.max(...items.map(i => i.id), 0) + 1;
+                setItems([...items, { id: newId, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }]);
             };
-        
-            const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-            script.onload = () => {
-              window.html2pdf().set(opt).from(element).save();
+
+            const removeItem = (id) => {
+                if (items.length > 1) {
+                    setItems(items.filter(item => item.id !== id));
+                }
             };
-            document.head.appendChild(script);
-          };
-        
-          const printInvoice = () => {
-            const printWindow = window.open('', '', 'width=800,height=600');
-            printWindow.document.write(printRef.current.innerHTML);
-            printWindow.document.close();
-            printWindow.print();
-          };
-        
-          const deleteInvoice = (index) => {
-            const updatedHistory = invoiceHistory.filter((_, i) => i !== index);
-            setInvoiceHistory(updatedHistory);
-            localStorage.setItem('invoiceHistory', JSON.stringify(updatedHistory));
-          };
-        
-          const InvoicePreviewContent = ({ invoice }) => (
-            <div ref={printRef} className="bg-white p-8">
-              {/* Header */}
-              <div className="flex items-start justify-between mb-8 pb-6 border-b-2 border-gray-200">
-                <img src={logoUrl} alt="Real Enterprises Logo" className="h-20 w-20 object-contain" />
-                <div className="text-center flex-1">
-                  <h1 className="text-4xl font-bold text-blue-900">Real Enterprises</h1>
-                  <p className="text-gray-600 text-sm mt-2">Facility & Labour Management Experts</p>
-                  <div className="mt-3 text-xs text-gray-700 space-y-1">
-                    <p><span className="font-semibold">Registration No:</span> RE-2021-IND-0759</p>
-                    <p><span className="font-semibold">GSTIN:</span> 29ABCDE1234F2Z7</p>
-                  </div>
-                </div>
-                <div className="text-right text-sm text-gray-700">
-                  <p className="font-bold mb-2">INVOICE</p>
-                  <p><span className="font-semibold">Invoice #:</span> INV-{invoice.invoiceNumber}</p>
-                  <p><span className="font-semibold">Date:</span> {invoice.date}</p>
-                  <p><span className="font-semibold">Time:</span> {invoice.time}</p>
-                </div>
-              </div>
-        
-              {/* Client Info */}
-              <div className="mb-8 grid grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-sm font-bold text-gray-800 mb-3 uppercase">Bill To:</h3>
-                  <p className="text-sm text-gray-700 font-semibold">{invoice.clientInfo.name}</p>
-                  <p className="text-sm text-gray-600">{invoice.clientInfo.address}</p>
-                </div>
-              </div>
-        
-              {/* Items Table */}
-              <div className="mb-8 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-blue-900 text-white">
-                      <th className="px-4 py-3 text-left font-semibold">Description</th>
-                      <th className="px-4 py-3 text-right font-semibold">Rate (₹)</th>
-                      <th className="px-4 py-3 text-center font-semibold">GST %</th>
-                      <th className="px-4 py-3 text-right font-semibold">GST (₹)</th>
-                      <th className="px-4 py-3 text-right font-semibold">Total (₹)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoice.items.map((item, index) => (
-                      <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                        <td className="px-4 py-3 text-gray-700">{item.description}</td>
-                        <td className="px-4 py-3 text-right text-gray-700">₹ {parseFloat(item.rate).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-center text-gray-700">{item.gstPercent}%</td>
-                        <td className="px-4 py-3 text-right text-gray-700 font-semibold">₹ {parseFloat(item.gstAmount).toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right text-gray-900 font-bold">₹ {parseFloat(item.total).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-        
-              {/* Totals Section */}
-              <div className="flex justify-end mb-8">
-                <div className="w-80">
-                  <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
-                    <div className="text-right text-sm text-gray-700 font-semibold">Subtotal:</div>
-                    <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(invoice.totals.subtotal).toFixed(2)}</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
-                    <div className="text-right text-sm text-gray-700 font-semibold">Total GST:</div>
-                    <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(invoice.totals.totalGST).toFixed(2)}</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-blue-900 text-white rounded-lg">
-                    <div className="text-right text-base font-bold">Amount Due:</div>
-                    <div className="text-right text-lg font-bold">₹ {parseFloat(invoice.totals.finalAmount).toFixed(2)}</div>
-                  </div>
-                </div>
-              </div>
-        
-              {/* Footer */}
-              <div className="border-t-2 border-gray-300 pt-6 mt-8 text-center text-xs text-gray-600">
-                <p className="font-semibold text-gray-700 mb-2">Thank you for your business!</p>
-                <p>This is a computer-generated invoice. No signature is required.</p>
-                <p className="mt-2">For inquiries, please contact Real Enterprises</p>
-              </div>
-            </div>
-          );
-        
-          return (
-            <div className="min-h-screen bg-gray-50 flex flex-col">
-              {/* Header */}
-              <header className="bg-white shadow-md border-b-4 border-blue-600">
-                <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <img src={logoUrl} alt="Real Enterprises Logo" className="h-12 w-12 object-contain" />
-                    <div>
-                      <h1 className="text-2xl font-bold text-blue-900">Real Enterprises</h1>
-                      <p className="text-xs text-gray-600">Facility & Labour Management Experts</p>
-                    </div>
-                  </div>
-        
-                  <div className="flex items-center gap-6">
-                    <button
-                      onClick={() => { setCurrentPage('editor'); setPreviewInvoice(null); }}
-                      className={`px-4 py-2 rounded-lg font-medium transition ${
-                        currentPage === 'editor'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      New Invoice
-                    </button>
-        
-                    <button
-                      onClick={() => setCurrentPage('history')}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-                        currentPage === 'history'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      <Clock size={18} /> History
-                    </button>
-        
-                    <div className="relative">
-                      <button
-                        onClick={() => setShowProfileMenu(!showProfileMenu)}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
-                      >
-                        Profile <ChevronDown size={18} />
-                      </button>
-                      {showProfileMenu && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                          <div className="px-4 py-3 border-b text-sm text-gray-700">
-                            <p className="font-semibold">Admin User</p>
-                            <p className="text-xs text-gray-600">admin@realenterprises.com</p>
-                          </div>
-                          <button
-                            onClick={() => { setShowProfileMenu(false); alert('Sign out functionality coming soon!'); }}
-                            className="w-full flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 transition text-left"
-                          >
-                            <LogOut size={16} /> Sign Out
-                          </button>
+
+            const resetForm = () => {
+                setClientInfo({ name: '', address: '' });
+                setItems([{ id: 1, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }]);
+            };
+
+            const saveInvoice = () => {
+                if (!clientInfo.name || items.some(i => !i.description)) {
+                    alert('Please fill in client name and all item descriptions');
+                    return;
+                }
+
+                const newInvoice = {
+                    invoiceNumber: String(invoiceNumber).padStart(4, '0'),
+                    clientInfo,
+                    items,
+                    totals,
+                    date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                    time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                };
+
+                const updatedHistory = [newInvoice, ...invoiceHistory];
+                setInvoiceHistory(updatedHistory);
+                localStorage.setItem('invoiceHistory', JSON.stringify(updatedHistory));
+
+                const newNumber = invoiceNumber + 1;
+                setInvoiceNumber(newNumber);
+                localStorage.setItem('invoiceNumber', newNumber.toString());
+
+                alert('Invoice saved successfully!');
+                resetForm();
+            };
+
+            const openPreview = (invoice = null) => {
+                if (invoice) {
+                    setPreviewInvoice(invoice);
+                } else {
+                    if (!clientInfo.name || items.some(i => !i.description)) {
+                        alert('Please fill in client name and all item descriptions');
+                        return;
+                    }
+                    setPreviewInvoice({
+                        invoiceNumber: String(invoiceNumber).padStart(4, '0'),
+                        clientInfo,
+                        items,
+                        totals,
+                        date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                        time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                    });
+                }
+                setCurrentPage('preview');
+            };
+
+            const downloadPDF = () => {
+                if (!previewInvoice) return;
+                const element = printRef.current;
+                const opt = {
+                    margin: 10,
+                    filename: `Invoice-${previewInvoice.invoiceNumber}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2 },
+                    jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+                };
+
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+                script.onload = () => {
+                    window.html2pdf().set(opt).from(element).save();
+                };
+                document.head.appendChild(script);
+            };
+
+            const printInvoice = () => {
+                const printWindow = window.open('', '', 'width=800,height=600');
+                printWindow.document.write(printRef.current.innerHTML);
+                printWindow.document.close();
+                printWindow.print();
+            };
+
+            const deleteInvoice = (index) => {
+                const updatedHistory = invoiceHistory.filter((_, i) => i !== index);
+                setInvoiceHistory(updatedHistory);
+                localStorage.setItem('invoiceHistory', JSON.stringify(updatedHistory));
+            };
+
+            const InvoicePreviewContent = ({ invoice }) => (
+                <div ref={printRef} className="bg-white p-8">
+                    <div className="flex items-start justify-between mb-8 pb-6 border-b-2 border-gray-200">
+                        <img src={logoUrl} alt="Real Enterprises Logo" className="h-20 w-20 object-contain" />
+                        <div className="text-center flex-1">
+                            <h1 className="text-4xl font-bold text-blue-900">Real Enterprises</h1>
+                            <p className="text-gray-600 text-sm mt-2">Facility & Labour Management Experts</p>
+                            <div className="mt-3 text-xs text-gray-700 space-y-1">
+                                <p><span className="font-semibold">Registration No:</span> RE-2021-IND-0759</p>
+                                <p><span className="font-semibold">GSTIN:</span> 29ABCDE1234F2Z7</p>
+                            </div>
                         </div>
-                      )}
+                        <div className="text-right text-sm text-gray-700">
+                            <p className="font-bold mb-2">INVOICE</p>
+                            <p><span className="font-semibold">Invoice #:</span> INV-{invoice.invoiceNumber}</p>
+                            <p><span className="font-semibold">Date:</span> {invoice.date}</p>
+                            <p><span className="font-semibold">Time:</span> {invoice.time}</p>
+                        </div>
                     </div>
-                  </div>
-                </div>
-              </header>
-        
-              {/* Main Content */}
-              <main className="flex-1 max-w-7xl w-full mx-auto px-8 py-8">
-                {/* Editor Page */}
-                {currentPage === 'editor' && (
-                  <div>
-                    <div className="mb-8">
-                      <h2 className="text-3xl font-bold text-gray-800 mb-2">Create New Invoice</h2>
-                      <p className="text-gray-600">Fill in the details below to create a new invoice</p>
-                    </div>
-        
-                    <div className="bg-white rounded-lg shadow-md p-6 mb-8 border-l-4 border-blue-600">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+
+                    <div className="mb-8 grid grid-cols-2 gap-8">
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Client Name</label>
-                          <input
-                            type="text"
-                            value={clientInfo.name}
-                            onChange={(e) => setClientInfo({ ...clientInfo, name: e.target.value })}
-                            placeholder="Enter client name"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          />
+                            <h3 className="text-sm font-bold text-gray-800 mb-3 uppercase">Bill To:</h3>
+                            <p className="text-sm text-gray-700 font-semibold">{invoice.clientInfo.name}</p>
+                            <p className="text-sm text-gray-600">{invoice.clientInfo.address}</p>
                         </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Client Address</label>
-                          <input
-                            type="text"
-                            value={clientInfo.address}
-                            onChange={(e) => setClientInfo({ ...clientInfo, address: e.target.value })}
-                            placeholder="Enter client address"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          />
-                        </div>
-                      </div>
                     </div>
-        
-                    {/* Items Table */}
-                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                      <h3 className="text-lg font-bold text-gray-800 mb-4">Line Items</h3>
-                      <div className="overflow-x-auto">
+
+                    <div className="mb-8 overflow-x-auto">
                         <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-blue-900 text-white">
-                              <th className="px-4 py-3 text-left font-semibold">Description</th>
-                              <th className="px-4 py-3 text-right font-semibold">Rate (₹)</th>
-                              <th className="px-4 py-3 text-center font-semibold">GST %</th>
-                              <th className="px-4 py-3 text-right font-semibold">GST (₹)</th>
-                              <th className="px-4 py-3 text-right font-semibold">Total (₹)</th>
-                              <th className="px-4 py-3 text-center font-semibold">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {items.map((item, index) => (
-                              <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                                <td className="px-4 py-3">
-                                  <input
-                                    type="text"
-                                    value={item.description}
-                                    onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                                    placeholder="Item description"
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-400 outline-none"
-                                  />
-                                </td>
-                                <td className="px-4 py-3 text-right">
-                                  <input
-                                    type="number"
-                                    value={item.rate}
-                                    onChange={(e) => handleItemChange(item.id, 'rate', e.target.value)}
-                                    placeholder="0"
-                                    min="0"
-                                    step="0.01"
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-blue-400 outline-none"
-                                  />
-                                </td>
-                                <td className="px-4 py-3 text-center">
-                                  <input
-                                    type="number"
-                                    value={item.gstPercent}
-                                    onChange={(e) => handleItemChange(item.id, 'gstPercent', e.target.value)}
-                                    placeholder="0"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-400 outline-none"
-                                  />
-                                </td>
-                                <td className="px-4 py-3 text-right text-gray-700 font-semibold text-xs">₹ {parseFloat(item.gstAmount).toFixed(2)}</td>
-                                <td className="px-4 py-3 text-right text-gray-900 font-bold text-xs">₹ {parseFloat(item.total).toFixed(2)}</td>
-                                <td className="px-4 py-3 text-center">
-                                  <button
-                                    onClick={() => removeItem(item.id)}
-                                    className="flex items-center justify-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs transition mx-auto"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
+                            <thead>
+                                <tr className="bg-blue-900 text-white">
+                                    <th className="px-4 py-3 text-left font-semibold">Description</th>
+                                    <th className="px-4 py-3 text-right font-semibold">Rate (₹)</th>
+                                    <th className="px-4 py-3 text-center font-semibold">GST %</th>
+                                    <th className="px-4 py-3 text-right font-semibold">GST (₹)</th>
+                                    <th className="px-4 py-3 text-right font-semibold">Total (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {invoice.items.map((item, index) => (
+                                    <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                        <td className="px-4 py-3 text-gray-700">{item.description}</td>
+                                        <td className="px-4 py-3 text-right text-gray-700">₹ {parseFloat(item.rate).toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-center text-gray-700">{item.gstPercent}%</td>
+                                        <td className="px-4 py-3 text-right text-gray-700 font-semibold">₹ {parseFloat(item.gstAmount).toFixed(2)}</td>
+                                        <td className="px-4 py-3 text-right text-gray-900 font-bold">₹ {parseFloat(item.total).toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
                         </table>
-                      </div>
-        
-                      <button
-                        onClick={addItem}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition mt-4"
-                      >
-                        <Plus size={18} /> Add Item
-                      </button>
                     </div>
-        
-                    {/* Totals Section */}
-                    <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                      <div className="flex justify-end">
-                        <div className="w-96">
-                          <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
-                            <div className="text-right text-sm text-gray-700 font-semibold">Subtotal:</div>
-                            <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(totals.subtotal).toFixed(2)}</div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
-                            <div className="text-right text-sm text-gray-700 font-semibold">Total GST:</div>
-                            <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(totals.totalGST).toFixed(2)}</div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-blue-900 text-white rounded-lg">
-                            <div className="text-right text-base font-bold">Amount Due:</div>
-                            <div className="text-right text-lg font-bold">₹ {parseFloat(totals.finalAmount).toFixed(2)}</div>
-                          </div>
+
+                    <div className="flex justify-end mb-8">
+                        <div className="w-80">
+                            <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
+                                <div className="text-right text-sm text-gray-700 font-semibold">Subtotal:</div>
+                                <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(invoice.totals.subtotal).toFixed(2)}</div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
+                                <div className="text-right text-sm text-gray-700 font-semibold">Total GST:</div>
+                                <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(invoice.totals.totalGST).toFixed(2)}</div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-blue-900 text-white rounded-lg">
+                                <div className="text-right text-base font-bold">Amount Due:</div>
+                                <div className="text-right text-lg font-bold">₹ {parseFloat(invoice.totals.finalAmount).toFixed(2)}</div>
+                            </div>
                         </div>
-                      </div>
                     </div>
-        
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 justify-end">
-                      <button
-                        onClick={resetForm}
-                        className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition"
-                      >
-                        <RotateCcw size={18} /> Reset
-                      </button>
-                      <button
-                        onClick={() => openPreview()}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                      >
-                        <Eye size={18} /> Preview
-                      </button>
+
+                    <div className="border-t-2 border-gray-300 pt-6 mt-8 text-center text-xs text-gray-600">
+                        <p className="font-semibold text-gray-700 mb-2">Thank you for your business!</p>
+                        <p>This is a computer-generated invoice. No signature is required.</p>
+                        <p className="mt-2">For inquiries, please contact Real Enterprises</p>
                     </div>
-                  </div>
-                )}
-        
-                {/* History Page */}
-                {currentPage === 'history' && (
-                  <div>
-                    <div className="mb-8">
-                      <h2 className="text-3xl font-bold text-gray-800 mb-2">Invoice History</h2>
-                      <p className="text-gray-600">View and manage all invoices created</p>
-                    </div>
-        
-                    {invoiceHistory.length === 0 ? (
-                      <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                        <p className="text-gray-600 text-lg">No invoices found. Create your first invoice!</p>
-                      </div>
-                    ) : (
-                      <div className="grid gap-4">
-                        {invoiceHistory.map((invoice, index) => (
-                          <div key={index} className="bg-white rounded-lg shadow-md p-6 flex items-center justify-between border-l-4 border-blue-600">
-                            <div>
-                              <h3 className="text-lg font-bold text-gray-800">Invoice INV-{invoice.invoiceNumber}</h3>
-                              <p className="text-sm text-gray-600 mt-1">Client: {invoice.clientInfo.name}</p>
-                              <p className="text-sm text-gray-600">{invoice.date} at {invoice.time}</p>
-                              <p className="text-lg font-bold text-blue-600 mt-2">₹ {parseFloat(invoice.totals.finalAmount).toFixed(2)}</p>
-                            </div>
-                            <div className="flex gap-3">
-                              <button
-                                onClick={() => openPreview(invoice)}
-                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
-                              >
-                                <Eye size={18} /> View
-                              </button>
-                              <button
-                                onClick={() => deleteInvoice(index)}
-                                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition"
-                              >
-                                <Trash2 size={18} /> Delete
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-        
-                {/* Preview Page */}
-                {currentPage === 'preview' && previewInvoice && (
-                  <div>
-                    <div className="mb-6 flex items-center justify-between">
-                      <div>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Invoice Preview</h2>
-                        <p className="text-gray-600">Review before downloading or printing</p>
-                      </div>
-                      <button
-                        onClick={() => { setCurrentPage('editor'); setPreviewInvoice(null); }}
-                        className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition"
-                      >
-                        <X size={18} /> Close
-                      </button>
-                    </div>
-        
-                    <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
-                      <InvoicePreviewContent invoice={previewInvoice} />
-                    </div>
-        
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 justify-center">
-                      <button
-                        onClick={downloadPDF}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                      >
-                        <Download size={18} /> Download PDF
-                      </button>
-                      <button
-                        onClick={printInvoice}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                      >
-                        <Printer size={18} /> Print Invoice
-                      </button>
-                      {!invoiceHistory.some(inv => inv.invoiceNumber === previewInvoice.invoiceNumber) && (
-                        <button
-                          onClick={saveInvoice}
-                          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                        >
-                          Save Invoice
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </main>
-        
-              {/* Footer */}
-              <footer className="bg-blue-900 text-white mt-12">
-                <div className="max-w-7xl mx-auto px-8 py-8">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                    <div>
-                      <h4 className="font-bold text-lg mb-3">Real Enterprises</h4>
-                      <p className="text-blue-200 text-sm">Facility & Labour Management Experts</p>
-                      <p className="text-blue-200 text-sm mt-2">Professional invoicing solutions for modern businesses</p>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg mb-3">Quick Links</h4>
-                      <ul className="text-blue-200 text-sm space-y-2">
-                        <li><button className="hover:text-white transition">Create Invoice</button></li>
-                        <li><button className="hover:text-white transition">View History</button></li>
-                        <li><button className="hover:text-white transition">Support</button></li>
-                      </ul>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-lg mb-3">Contact Info</h4>
-                      <p className="text-blue-200 text-sm">Registration No: RE-2021-IND-0759</p>
-                      <p className="text-blue-200 text-sm">GSTIN: 29ABCDE1234F2Z7</p>
-                      <p className="text-blue-200 text-sm mt-3">Email: info@realenterprises.com</p>
-                    </div>
-                  </div>
-                  <div className="border-t border-blue-800 pt-6 text-center text-blue-200 text-sm">
-                    <p>&copy; 2024 Real Enterprises. All rights reserved.</p>
-                    <p className="mt-2">Professional Invoicing Solutions</p>
-                  </div>
                 </div>
-              </footer>
-        
-              <style jsx>{`
-                @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
-        
-                * {
-                  font-family: 'Poppins', sans-serif;
-                }
-        
-                @media print {
-                  body {
-                    background: white;
-                  }
-                }
-        
-                input[type="number"]::-webkit-outer-spin-button,
-                input[type="number"]::-webkit-inner-spin-button {
-                  -webkit-appearance: none;
-                  margin: 0;
-                }
-              `}</style>
-            </div>
-          );
+            );
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col">
+                    <header className="bg-white shadow-md border-b-4 border-blue-600">
+                        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <img src={logoUrl} alt="Real Enterprises Logo" className="h-12 w-12 object-contain" />
+                                <div>
+                                    <h1 className="text-2xl font-bold text-blue-900">Real Enterprises</h1>
+                                    <p className="text-xs text-gray-600">Facility & Labour Management Experts</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-6">
+                                <button
+                                    onClick={() => { setCurrentPage('editor'); setPreviewInvoice(null); }}
+                                    className={`px-4 py-2 rounded-lg font-medium transition ${
+                                        currentPage === 'editor'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                                >
+                                    New Invoice
+                                </button>
+
+                                <button
+                                    onClick={() => setCurrentPage('history')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
+                                        currentPage === 'history'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                                >
+                                    ⏱️ History
+                                </button>
+
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                        className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
+                                    >
+                                        Profile <span style={{fontSize: '12px'}}>▼</span>
+                                    </button>
+                                    {showProfileMenu && (
+                                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                                            <div className="px-4 py-3 border-b text-sm text-gray-700">
+                                                <p className="font-semibold">Admin User</p>
+                                                <p className="text-xs text-gray-600">admin@realenterprises.com</p>
+                                            </div>
+                                            <button
+                                                onClick={() => { setShowProfileMenu(false); alert('Sign out functionality coming soon!'); }}
+                                                className="w-full flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 transition text-left"
+                                            >
+                                                🚪 Sign Out
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-1 max-w-7xl w-full mx-auto px-8 py-8">
+                        {currentPage === 'editor' && (
+                            <div>
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Create New Invoice</h2>
+                                    <p className="text-gray-600">Fill in the details below to create a new invoice</p>
+                                </div>
+
+                                <div className="bg-white rounded-lg shadow-md p-6 mb-8 border-l-4 border-blue-600">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Client Name</label>
+                                            <input
+                                                type="text"
+                                                value={clientInfo.name}
+                                                onChange={(e) => setClientInfo({ ...clientInfo, name: e.target.value })}
+                                                placeholder="Enter client name"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Client Address</label>
+                                            <input
+                                                type="text"
+                                                value={clientInfo.address}
+                                                onChange={(e) => setClientInfo({ ...clientInfo, address: e.target.value })}
+                                                placeholder="Enter client address"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                                    <h3 className="text-lg font-bold text-gray-800 mb-4">Line Items</h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm">
+                                            <thead>
+                                                <tr className="bg-blue-900 text-white">
+                                                    <th className="px-4 py-3 text-left font-semibold">Description</th>
+                                                    <th className="px-4 py-3 text-right font-semibold">Rate (₹)</th>
+                                                    <th className="px-4 py-3 text-center font-semibold">GST %</th>
+                                                    <th className="px-4 py-3 text-right font-semibold">GST (₹)</th>
+                                                    <th className="px-4 py-3 text-right font-semibold">Total (₹)</th>
+                                                    <th className="px-4 py-3 text-center font-semibold">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {items.map((item, index) => (
+                                                    <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                                        <td className="px-4 py-3">
+                                                            <input
+                                                                type="text"
+                                                                value={item.description}
+                                                                onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                                                                placeholder="Item description"
+                                                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-400 outline-none"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right">
+                                                            <input
+                                                                type="number"
+                                                                value={item.rate}
+                                                                onChange={(e) => handleItemChange(item.id, 'rate', e.target.value)}
+                                                                placeholder="0"
+                                                                min="0"
+                                                                step="0.01"
+                                                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-blue-400 outline-none"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <input
+                                                                type="number"
+                                                                value={item.gstPercent}
+                                                                onChange={(e) => handleItemChange(item.id, 'gstPercent', e.target.value)}
+                                                                placeholder="0"
+                                                                min="0"
+                                                                max="100"
+                                                                step="0.01"
+                                                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-400 outline-none"
+                                                            />
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right text-gray-700 font-semibold text-xs">₹ {parseFloat(item.gstAmount).toFixed(2)}</td>
+                                                        <td className="px-4 py-3 text-right text-gray-900 font-bold text-xs">₹ {parseFloat(item.total).toFixed(2)}</td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            <button
+                                                                onClick={() => removeItem(item.id)}
+                                                                className="flex items-center justify-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs transition mx-auto"
+                                                            >
+                                                                🗑️
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <button
+                                        onClick={addItem}
+                                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition mt-4"
+                                    >
+                                        ➕ Add Item
+                                    </button>
+                                </div>
+
+                                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                                    <div className="flex justify-end">
+                                        <div className="w-96">
+                                            <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
+                                                <div className="text-right text-sm text-gray-700 font-semibold">Subtotal:</div>
+                                                <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(totals.subtotal).toFixed(2)}</div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
+                                                <div className="text-right text-sm text-gray-700 font-semibold">Total GST:</div>
+                                                <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(totals.totalGST).toFixed(2)}</div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-blue-900 text-white rounded-lg">
+                                                <div className="text-right text-base font-bold">Amount Due:</div>
+                                                <div className="text-right text-lg font-bold">₹ {parseFloat(totals.finalAmount).toFixed(2)}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 justify-end">
+                                    <button
+                                        onClick={resetForm}
+                                        className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition"
+                                    >
+                                        🔄 Reset
+                                    </button>
+                                    <button
+                                        onClick={() => openPreview()}
+                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
+                                    >
+                                        👁️ Preview
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {currentPage === 'history' && (
+                            <div>
+                                <div className="mb-8">
+                                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Invoice History</h2>
+                                    <p className="text-gray-600">View and manage all invoices created</p>
+                                </div>
+
+                                {invoiceHistory.length === 0 ? (
+                                    <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                                        <p className="text-gray-600 text-lg">No invoices found. Create your first invoice!</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid gap-4">
+                                        {invoiceHistory.map((invoice, index) => (
+                                            <div key={index} className="bg-white rounded-lg shadow-md p-6 flex items-center justify-between border-l-4 border-blue-600">
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-gray-800">Invoice INV-{invoice.invoiceNumber}</h3>
+                                                    <p className="text-sm text-gray-600 mt-1">Client: {invoice.clientInfo.name}</p>
+                                                    <p className="text-sm text-gray-600">{invoice.date} at {invoice.time}</p>
+                                                    <p className="text-lg font-bold text-blue-600 mt-2">₹ {parseFloat(invoice.totals.finalAmount).toFixed(2)}</p>
+                                                </div>
+                                                <div className="flex gap-3">
+                                                    <button
+                                                        onClick={() => openPreview(invoice)}
+                                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                                                    >
+                                                        👁️ View
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteInvoice(index)}
+                                                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition"
+                                                    >
+                                                        🗑️ Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {currentPage === 'preview' && previewInvoice && (
+                            <div>
+                                <div className="mb-6 flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Invoice Preview</h2>
+                                        <p className="text-gray-600">Review before downloading or printing</p>
+                                    </div>
+                                    <button
+                                        onClick={() => { setCurrentPage('editor'); setPreviewInvoice(null); }}
+                                        className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition"
+                                    >
+                                        ✕ Close
+                                    </button>
+                                </div>
+
+                                <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+                                    <InvoicePreviewContent invoice={previewInvoice} />
+                                </div>
+
+                                <div className="flex gap-3 justify-center flex-wrap">
+                                    <button
+                                        onClick={downloadPDF}
+                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
+                                    >
+                                        📥 Download PDF
+                                    </button>
+                                    <button
+                                        onClick={printInvoice}
+                                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition"
+                                    >
+                                        🖨️ Print Invoice
+                                    </button>
+                                    {!invoiceHistory.some(inv => inv.invoiceNumber === previewInvoice.invoiceNumber) && (
+                                        <button
+                                            onClick={saveInvoice}
+                                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition"
+                                        >
+                                            Save Invoice
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    <footer className="bg-blue-900 text-white mt-12">
+                        <div className="max-w-7xl mx-auto px-8 py-8">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                                <div>
+                                    <h4 className="font-bold text-lg mb-3">Real Enterprises</h4>
+                                    <p className="text-blue-200 text-sm">Facility & Labour Management Experts</p>
+                                    <p className="text-blue-200 text-sm mt-2">Professional invoicing solutions for modern businesses</p>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg mb-3">Quick Links</h4>
+                                    <ul className="text-blue-200 text-sm space-y-2">
+                                        <li><button className="hover:text-white transition">Create Invoice</button></li>
+                                        <li><button className="hover:text-white transition">View History</button></li>
+                                        <li><button className="hover:text-white transition">Support</button></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-lg mb-3">Contact Info</h4>
+                                    <p className="text-blue-200 text-sm">Registration No: RE-2021-IND-0759</p>
+                                    <p className="text-blue-200 text-sm">GSTIN: 29ABCDE1234F2Z7</p>
+                                    <p className="text-blue-200 text-sm mt-3">Email: info@realenterprises.com</p>
+                                </div>
+                            </div>
+                            <div className="border-t border-blue-800 pt-6 text-center text-blue-200 text-sm">
+                                <p>&copy; 2024 Real Enterprises. All rights reserved.</p>
+                                <p className="mt-2">Professional Invoicing Solutions</p>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
         };
-        
-        export default InvoiceGenerator;
+
+        ReactDOM.render(<InvoiceGenerator />, document.getElementById('root'));
     </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
 </body>
 </html>
