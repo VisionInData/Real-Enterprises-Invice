@@ -8,531 +8,385 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <link rel="stylesheet" href="https://unpkg.com/lucide@latest">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700;900&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        [role="img"] { display: inline-block; }
-        .icon-plus::before { content: "➕"; }
-        .icon-download::before { content: "📥"; }
-        .icon-refresh::before { content: "🔄"; }
-        .icon-trash::before { content: "🗑️"; }
-        .icon-eye::before { content: "👁️"; }
-        .icon-printer::before { content: "🖨️"; }
-        .icon-chevron::before { content: "▼"; }
-        .icon-logout::before { content: "🚪"; }
-        .icon-clock::before { content: "⏱️"; }
-        .icon-close::before { content: "✕"; }
+        * { font-family: 'Source Sans 3', sans-serif; }
+        @media print { body { background: white; } }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen">
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useRef, useEffect } = React;
 
-        const InvoiceGenerator = () => {
-            const logoUrl = "https://i.postimg.cc/gjSZMKk9/Real-Enterprise-Logo.png";
+        const COMPANY = {
+            name: "REAL ENTERPRISES",
+            tagline: "House Keeping & All Labour Supplier",
+            subTagline: "Gardening, Swimming Pool, All Machine & Pest Control, Deep Cleaning, Acid Wash & All Maintenance.",
+            address: "Jain Vihar Colony, Nadhe Nagar, Near Mane School, Kalewadi, Pimpri, Pune – 411017.",
+            mob: "9765259996 / 7066144455",
+            email: "sanjaywaghmare25062@gmail.com",
+            gst: "27AAYPW9193J1Z",
+            pan: "AAYPW9193J"
+        };
 
-            const [currentPage, setCurrentPage] = useState('editor');
-            const [showProfileMenu, setShowProfileMenu] = useState(false);
+        const SCOPE_DUTIES = [
+            "The garbage will be collected from every floor.",
+            "Daily mopping of common area, including corridors and ladders.",
+            "Sweeping of parking lot will be done daily.",
+            "Washing parking lots will be done after every 10 days.",
+            "Common area deep cleaning will be done in 7 days circle.",
+            "Terrace area cleaning will be done in 15 days circle."
+        ];
 
-            const [invoiceNumber, setInvoiceNumber] = useState(() => {
-                const saved = localStorage.getItem('invoiceNumber');
-                return saved ? parseInt(saved) : 1;
-            });
+        const emptyItem = () => ({ id: Date.now(), srNo: '', description: '', perPerson: '', rate: '', duty: '8 Hrs.', payment: '' });
 
-            const [invoiceHistory, setInvoiceHistory] = useState(() => {
-                const saved = localStorage.getItem('invoiceHistory');
-                return saved ? JSON.parse(saved) : [];
-            });
-
-            const [clientInfo, setClientInfo] = useState({
-                name: '',
-                address: ''
-            });
-
+        const InvoiceApp = () => {
+            const [page, setPage] = useState('editor');
+            const [invoiceNumber, setInvoiceNumber] = useState(1);
+            const [history, setHistory] = useState([]);
+            const [toName, setToName] = useState('');
+            const [toAddress, setToAddress] = useState('');
+            const [serviceContext, setServiceContext] = useState('');
             const [items, setItems] = useState([
-                { id: 1, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }
+                { id: 1, srNo: '1', description: 'Men Housekeeping', perPerson: '01', rate: '15000', duty: '8 Hrs.', payment: '15000' },
+                { id: 2, srNo: '2', description: 'Woman Housekeeping', perPerson: '01', rate: '15000', duty: '8 Hrs.', payment: '15000' },
+                { id: 3, srNo: '3', description: 'Supervisor', perPerson: '01', rate: '18000', duty: '8 Hrs.', payment: '18000' },
+                { id: 4, srNo: '4', description: 'Service Charges 5%\nPer person on total amount', perPerson: '', rate: '', duty: '', payment: '2400' },
+                { id: 5, srNo: '5', description: 'Material', perPerson: '', rate: '', duty: '', payment: '' },
             ]);
-
-            const [totals, setTotals] = useState({
-                subtotal: 0,
-                totalGST: 0,
-                finalAmount: 0
-            });
-
-            const [previewInvoice, setPreviewInvoice] = useState(null);
+            const [gstPercent, setGstPercent] = useState(18);
+            const [showScope, setShowScope] = useState(true);
+            const [preview, setPreview] = useState(null);
             const printRef = useRef();
 
-            useEffect(() => {
-                let subtotal = 0;
-                let totalGST = 0;
-
-                const updatedItems = items.map(item => {
-                    const rate = parseFloat(item.rate) || 0;
-                    const gstPct = parseFloat(item.gstPercent) || 0;
-                    const lineSubtotal = rate;
-                    const gstAmount = (lineSubtotal * gstPct) / 100;
-                    const total = lineSubtotal + gstAmount;
-                    subtotal += lineSubtotal;
-                    totalGST += gstAmount;
-                    return { ...item, gstAmount: gstAmount.toFixed(2), total: total.toFixed(2) };
-                });
-
-                setItems(updatedItems);
-                setTotals({
-                    subtotal: subtotal.toFixed(2),
-                    totalGST: totalGST.toFixed(2),
-                    finalAmount: (subtotal + totalGST).toFixed(2)
-                });
-            }, [items.map(i => `${i.rate}${i.gstPercent}`).join('')]);
+            const subtotal = items.reduce((sum, item) => sum + (parseFloat(item.payment) || 0), 0);
+            const gstAmount = (subtotal * gstPercent) / 100;
+            const total = subtotal + gstAmount;
 
             const handleItemChange = (id, field, value) => {
-                setItems(items.map(item => 
-                    item.id === id ? { ...item, [field]: value } : item
-                ));
+                setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
             };
 
             const addItem = () => {
-                const newId = Math.max(...items.map(i => i.id), 0) + 1;
-                setItems([...items, { id: newId, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }]);
+                const next = items.length + 1;
+                setItems([...items, { ...emptyItem(), srNo: String(next) }]);
             };
 
             const removeItem = (id) => {
-                if (items.length > 1) {
-                    setItems(items.filter(item => item.id !== id));
-                }
+                if (items.length > 1) setItems(items.filter(i => i.id !== id));
             };
 
-            const resetForm = () => {
-                setClientInfo({ name: '', address: '' });
-                setItems([{ id: 1, description: '', rate: '', gstPercent: '', gstAmount: 0, total: 0 }]);
+            const buildInvoiceData = () => ({
+                invoiceNumber: String(invoiceNumber).padStart(4, '0'),
+                date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
+                toName, toAddress, serviceContext,
+                items, gstPercent,
+                subtotal: subtotal.toFixed(2),
+                gstAmount: gstAmount.toFixed(2),
+                total: total.toFixed(2),
+                showScope
+            });
+
+            const openPreview = () => {
+                if (!toName) { alert('Please enter the recipient name (To field)'); return; }
+                setPreview(buildInvoiceData());
+                setPage('preview');
             };
 
             const saveInvoice = () => {
-                if (!clientInfo.name || items.some(i => !i.description)) {
-                    alert('Please fill in client name and all item descriptions');
-                    return;
-                }
-
-                const newInvoice = {
-                    invoiceNumber: String(invoiceNumber).padStart(4, '0'),
-                    clientInfo,
-                    items,
-                    totals,
-                    date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                    time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                };
-
-                const updatedHistory = [newInvoice, ...invoiceHistory];
-                setInvoiceHistory(updatedHistory);
-                localStorage.setItem('invoiceHistory', JSON.stringify(updatedHistory));
-
-                const newNumber = invoiceNumber + 1;
-                setInvoiceNumber(newNumber);
-                localStorage.setItem('invoiceNumber', newNumber.toString());
-
-                alert('Invoice saved successfully!');
-                resetForm();
-            };
-
-            const openPreview = (invoice = null) => {
-                if (invoice) {
-                    setPreviewInvoice(invoice);
-                } else {
-                    if (!clientInfo.name || items.some(i => !i.description)) {
-                        alert('Please fill in client name and all item descriptions');
-                        return;
-                    }
-                    setPreviewInvoice({
-                        invoiceNumber: String(invoiceNumber).padStart(4, '0'),
-                        clientInfo,
-                        items,
-                        totals,
-                        date: new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }),
-                        time: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-                    });
-                }
-                setCurrentPage('preview');
+                const inv = buildInvoiceData();
+                const updated = [inv, ...history];
+                setHistory(updated);
+                const newNum = invoiceNumber + 1;
+                setInvoiceNumber(newNum);
+                alert('Invoice saved!');
+                setPage('history');
             };
 
             const downloadPDF = () => {
-                if (!previewInvoice) return;
-
-                // Load jsPDF and html2canvas
-                const loadScript = (src) => {
-                    return new Promise((resolve, reject) => {
-                        const script = document.createElement('script');
-                        script.src = src;
-                        script.onload = resolve;
-                        script.onerror = reject;
-                        document.head.appendChild(script);
-                    });
-                };
-
-                // Ensure both libraries are loaded
+                const loadScript = (src) => new Promise((res, rej) => {
+                    if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
+                    const s = document.createElement('script');
+                    s.src = src; s.onload = res; s.onerror = rej;
+                    document.head.appendChild(s);
+                });
                 Promise.all([
                     loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
                     loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
-                ]).then(() => {
-                    setTimeout(() => {
-                        const element = printRef.current;
-                        const canvas = window.html2canvas || html2canvas;
-                        
-                        if (window.html2canvas) {
-                            window.html2canvas(element, {
-                                scale: 2,
-                                allowTaint: true,
-                                useCORS: true
-                            }).then(canvas => {
-                                const imgData = canvas.toDataURL('image/png');
-                                const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
-                                const imgWidth = 210;
-                                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-                                let heightLeft = imgHeight;
-                                let position = 0;
-
-                                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                                heightLeft -= 297;
-
-                                while (heightLeft >= 0) {
-                                    position = heightLeft - imgHeight;
-                                    pdf.addPage();
-                                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-                                    heightLeft -= 297;
-                                }
-
-                                pdf.save(`Invoice-${previewInvoice.invoiceNumber}.pdf`);
-                            });
-                        }
-                    }, 500);
-                });
+                ]).then(() => setTimeout(() => {
+                    window.html2canvas(printRef.current, { scale: 2, useCORS: true }).then(canvas => {
+                        const imgData = canvas.toDataURL('image/png');
+                        const pdf = new window.jspdf.jsPDF('p', 'mm', 'a4');
+                        const imgWidth = 210, imgHeight = (canvas.height * imgWidth) / canvas.width;
+                        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                        pdf.save(`RealEnterprises-Invoice-${preview.invoiceNumber}.pdf`);
+                    });
+                }, 400));
             };
 
-            const printInvoice = () => {
-                const printWindow = window.open('', '', 'width=800,height=600');
-                printWindow.document.write(printRef.current.innerHTML);
-                printWindow.document.close();
-                printWindow.print();
-            };
+            const InvoiceDoc = ({ inv }) => (
+                <div ref={printRef} style={{ background: 'white', padding: '36px 40px', fontFamily: 'Source Sans 3, sans-serif', maxWidth: '800px', margin: '0 auto', color: '#111' }}>
+                    {/* Header */}
+                    <div style={{ textAlign: 'center', borderBottom: '3px double #222', paddingBottom: '16px', marginBottom: '12px' }}>
+                        <h1 style={{ fontFamily: 'Merriweather, serif', fontSize: '38px', fontWeight: '900', color: '#b91c1c', letterSpacing: '2px', margin: 0 }}>REAL ENTERPRISES</h1>
+                        <p style={{ fontWeight: '700', fontSize: '14px', margin: '6px 0 4px' }}>House Keeping & All Labour Supplier</p>
+                        <p style={{ fontSize: '12px', margin: '0 0 6px', fontWeight: '600', fontStyle: 'italic' }}>Gardening, Swimming Pool, All Machine &amp; Pest Control, Deep Cleaning, Acid Wash &amp; All Maintenance.</p>
+                        <p style={{ fontSize: '12px', margin: '0' }}><strong>Office Add :-</strong> Jain Vihar Colony, Nadhe Nagar, Near Mane School, Kalewadi, Pimpri, Pune – 411017.</p>
+                        <p style={{ fontSize: '12px', margin: '4px 0 0' }}><strong>Mob. No. :-</strong> 9765259996 / 7066144455 &nbsp;&nbsp; <strong>Email :-</strong> sanjaywaghmare25062@gmail.com</p>
+                    </div>
 
-            const deleteInvoice = (index) => {
-                const updatedHistory = invoiceHistory.filter((_, i) => i !== index);
-                setInvoiceHistory(updatedHistory);
-                localStorage.setItem('invoiceHistory', JSON.stringify(updatedHistory));
-            };
-
-            const InvoicePreviewContent = ({ invoice }) => (
-                <div ref={printRef} style={{backgroundColor: 'white', padding: '32px', fontFamily: 'Poppins, sans-serif'}}>
-                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px', paddingBottom: '24px', borderBottom: '2px solid #e5e7eb'}}>
-                        <img src={logoUrl} alt="Real Enterprises Logo" style={{height: '80px', width: '80px', objectFit: 'contain'}} />
-                        <div style={{textAlign: 'center', flex: 1}}>
-                            <h1 style={{fontSize: '36px', fontWeight: 'bold', color: '#1e3a8a', margin: '0'}}>Real Enterprises</h1>
-                            <p style={{color: '#4b5563', fontSize: '14px', marginTop: '8px', margin: '8px 0 0 0'}}>Facility & Labour Management Experts</p>
-                            <div style={{marginTop: '12px', fontSize: '12px', color: '#374151'}}>
-                                <p style={{margin: '4px 0'}}><span style={{fontWeight: '600'}}>Registration No:</span> RE-2021-IND-0759</p>
-                                <p style={{margin: '4px 0'}}><span style={{fontWeight: '600'}}>GSTIN:</span> 29ABCDE1234F2Z7</p>
-                            </div>
+                    {/* Invoice meta */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '10px' }}>
+                        <div>
+                            <p style={{ margin: '2px 0' }}><strong>GST No.:</strong> {COMPANY.gst}</p>
+                            <p style={{ margin: '2px 0' }}><strong>PAN No.:</strong> {COMPANY.pan}</p>
                         </div>
-                        <div style={{textAlign: 'right', fontSize: '14px', color: '#374151'}}>
-                            <p style={{fontWeight: 'bold', marginBottom: '8px', margin: '0 0 8px 0'}}>INVOICE</p>
-                            <p style={{margin: '4px 0'}}><span style={{fontWeight: '600'}}>Invoice #:</span> INV-{invoice.invoiceNumber}</p>
-                            <p style={{margin: '4px 0'}}><span style={{fontWeight: '600'}}>Date:</span> {invoice.date}</p>
-                            <p style={{margin: '4px 0'}}><span style={{fontWeight: '600'}}>Time:</span> {invoice.time}</p>
+                        <div style={{ textAlign: 'right' }}>
+                            <p style={{ margin: '2px 0' }}><strong>Invoice No.:</strong> INV-{inv.invoiceNumber}</p>
+                            <p style={{ margin: '2px 0' }}><strong>Date:</strong> {inv.date}</p>
                         </div>
                     </div>
 
-                    <div style={{marginBottom: '32px'}}>
-                        <h3 style={{fontSize: '14px', fontWeight: 'bold', color: '#1f2937', marginBottom: '12px', margin: '0 0 12px 0', textTransform: 'uppercase'}}>Bill To:</h3>
-                        <p style={{fontSize: '14px', color: '#374151', fontWeight: '600', margin: '0'}}>{invoice.clientInfo.name}</p>
-                        <p style={{fontSize: '14px', color: '#6b7280', margin: '0'}}>{invoice.clientInfo.address}</p>
+                    {/* To */}
+                    <div style={{ marginBottom: '12px', fontSize: '13px' }}>
+                        <p style={{ margin: '0 0 2px' }}><strong>To,</strong></p>
+                        {inv.toName && <p style={{ margin: '0 0 2px', paddingLeft: '12px', fontWeight: '600' }}>{inv.toName}</p>}
+                        {inv.toAddress && <p style={{ margin: '0', paddingLeft: '12px' }}>{inv.toAddress}</p>}
                     </div>
 
-                    <div style={{marginBottom: '32px', overflowX: 'auto'}}>
-                        <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '14px'}}>
-                            <thead>
-                                <tr style={{backgroundColor: '#1e3a8a', color: 'white'}}>
-                                    <th style={{padding: '12px 16px', textAlign: 'left', fontWeight: '600', border: '1px solid #1e3a8a'}}>Description</th>
-                                    <th style={{padding: '12px 16px', textAlign: 'right', fontWeight: '600', border: '1px solid #1e3a8a'}}>Rate (₹)</th>
-                                    <th style={{padding: '12px 16px', textAlign: 'center', fontWeight: '600', border: '1px solid #1e3a8a'}}>GST %</th>
-                                    <th style={{padding: '12px 16px', textAlign: 'right', fontWeight: '600', border: '1px solid #1e3a8a'}}>GST (₹)</th>
-                                    <th style={{padding: '12px 16px', textAlign: 'right', fontWeight: '600', border: '1px solid #1e3a8a'}}>Total (₹)</th>
+                    {/* Context paragraph */}
+                    {inv.serviceContext && (
+                        <p style={{ fontSize: '13px', margin: '0 0 14px', lineHeight: '1.6' }}>{inv.serviceContext}</p>
+                    )}
+
+                    {/* Section title */}
+                    <p style={{ textAlign: 'center', fontWeight: '700', fontSize: '14px', margin: '0 0 8px', textDecoration: 'underline' }}>Housekeeping Quotation with Material full month</p>
+
+                    {/* Items table */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', marginBottom: '16px' }}>
+                        <thead>
+                            <tr style={{ background: '#f3f4f6' }}>
+                                <th style={{ border: '1px solid #555', padding: '7px 8px', textAlign: 'center', width: '40px' }}>Sr. No.</th>
+                                <th style={{ border: '1px solid #555', padding: '7px 8px', textAlign: 'left' }}>Details</th>
+                                <th style={{ border: '1px solid #555', padding: '7px 8px', textAlign: 'center', width: '70px' }}>Per Person</th>
+                                <th style={{ border: '1px solid #555', padding: '7px 8px', textAlign: 'right', width: '80px' }}>Rate</th>
+                                <th style={{ border: '1px solid #555', padding: '7px 8px', textAlign: 'center', width: '70px' }}>Duty</th>
+                                <th style={{ border: '1px solid #555', padding: '7px 8px', textAlign: 'right', width: '90px' }}>Payment</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {inv.items.map((item, idx) => (
+                                <tr key={item.id}>
+                                    <td style={{ border: '1px solid #555', padding: '6px 8px', textAlign: 'center', verticalAlign: 'top' }}>{item.srNo}</td>
+                                    <td style={{ border: '1px solid #555', padding: '6px 8px', verticalAlign: 'top', whiteSpace: 'pre-line' }}>{item.description}</td>
+                                    <td style={{ border: '1px solid #555', padding: '6px 8px', textAlign: 'center', verticalAlign: 'top' }}>{item.perPerson}</td>
+                                    <td style={{ border: '1px solid #555', padding: '6px 8px', textAlign: 'right', verticalAlign: 'top' }}>{item.rate ? parseInt(item.rate).toLocaleString('en-IN') : ''}</td>
+                                    <td style={{ border: '1px solid #555', padding: '6px 8px', textAlign: 'center', verticalAlign: 'top' }}>{item.duty}</td>
+                                    <td style={{ border: '1px solid #555', padding: '6px 8px', textAlign: 'right', verticalAlign: 'top' }}>{item.payment ? parseInt(item.payment).toLocaleString('en-IN') + '/-' : ''}</td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {invoice.items.map((item, index) => (
-                                    <tr key={item.id} style={{backgroundColor: index % 2 === 0 ? '#f9fafb' : 'white'}}>
-                                        <td style={{padding: '12px 16px', color: '#374151', border: '1px solid #e5e7eb'}}>{item.description}</td>
-                                        <td style={{padding: '12px 16px', textAlign: 'right', color: '#374151', border: '1px solid #e5e7eb'}}>₹ {parseFloat(item.rate).toFixed(2)}</td>
-                                        <td style={{padding: '12px 16px', textAlign: 'center', color: '#374151', border: '1px solid #e5e7eb'}}>{item.gstPercent}%</td>
-                                        <td style={{padding: '12px 16px', textAlign: 'right', color: '#374151', fontWeight: '600', border: '1px solid #e5e7eb'}}>₹ {parseFloat(item.gstAmount).toFixed(2)}</td>
-                                        <td style={{padding: '12px 16px', textAlign: 'right', color: '#111827', fontWeight: 'bold', border: '1px solid #e5e7eb'}}>₹ {parseFloat(item.total).toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
+                            ))}
+                        </tbody>
+                    </table>
+
+                    {/* GST note */}
+                    <p style={{ fontSize: '13px', margin: '0 0 6px', fontWeight: '600' }}>GST {inv.gstPercent}% Extra in actual</p>
+
+                    {/* Totals */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+                        <table style={{ fontSize: '13px', borderCollapse: 'collapse', minWidth: '260px' }}>
+                            <tr>
+                                <td style={{ padding: '4px 12px', textAlign: 'right', fontWeight: '600' }}>Subtotal:</td>
+                                <td style={{ padding: '4px 12px', textAlign: 'right', borderBottom: '1px solid #aaa' }}>₹ {parseFloat(inv.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                            <tr>
+                                <td style={{ padding: '4px 12px', textAlign: 'right', fontWeight: '600' }}>GST ({inv.gstPercent}%):</td>
+                                <td style={{ padding: '4px 12px', textAlign: 'right', borderBottom: '1px solid #aaa' }}>₹ {parseFloat(inv.gstAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                            <tr style={{ background: '#fef2f2' }}>
+                                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '700', fontSize: '14px' }}>Total Amount:</td>
+                                <td style={{ padding: '6px 12px', textAlign: 'right', fontWeight: '700', fontSize: '14px', border: '2px solid #b91c1c', color: '#b91c1c' }}>₹ {parseFloat(inv.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </tr>
                         </table>
                     </div>
 
-                    <div style={{display: 'flex', justifyContent: 'flex-end', marginBottom: '32px'}}>
-                        <div style={{width: '320px'}}>
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '12px 0', borderTop: '1px solid #d1d5db'}}>
-                                <div style={{textAlign: 'right', fontSize: '14px', color: '#374151', fontWeight: '600'}}>Subtotal:</div>
-                                <div style={{textAlign: 'right', fontSize: '14px', color: '#111827', fontWeight: 'bold'}}>₹ {parseFloat(invoice.totals.subtotal).toFixed(2)}</div>
-                            </div>
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '12px 0', borderTop: '1px solid #d1d5db'}}>
-                                <div style={{textAlign: 'right', fontSize: '14px', color: '#374151', fontWeight: '600'}}>Total GST:</div>
-                                <div style={{textAlign: 'right', fontSize: '14px', color: '#111827', fontWeight: 'bold'}}>₹ {parseFloat(invoice.totals.totalGST).toFixed(2)}</div>
-                            </div>
-                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', padding: '12px 16px', backgroundColor: '#1e3a8a', color: 'white', borderRadius: '8px'}}>
-                                <div style={{textAlign: 'right', fontSize: '16px', fontWeight: 'bold'}}>Amount Due:</div>
-                                <div style={{textAlign: 'right', fontSize: '18px', fontWeight: 'bold'}}>₹ {parseFloat(invoice.totals.finalAmount).toFixed(2)}</div>
-                            </div>
+                    {/* Scope of Work */}
+                    {inv.showScope && (
+                        <div style={{ marginBottom: '24px', fontSize: '13px' }}>
+                            <p style={{ fontWeight: '700', margin: '0 0 6px', fontSize: '13px' }}>Scope of Work:</p>
+                            <p style={{ margin: '0 0 4px' }}>Floor &nbsp;&nbsp;&nbsp; Parking &nbsp;&nbsp;&nbsp; Offices &nbsp;&nbsp;&nbsp; Common &nbsp;&nbsp;&nbsp; Lobby</p>
+                            <p style={{ fontWeight: '700', margin: '8px 0 4px' }}>❖ Duties:</p>
+                            <ul style={{ margin: '0', paddingLeft: '20px', lineHeight: '1.8' }}>
+                                {SCOPE_DUTIES.map((d, i) => <li key={i}>{d}</li>)}
+                            </ul>
+                        </div>
+                    )}
+
+                    {/* Footer signature */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '32px' }}>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ height: '50px' }}></div>
+                            <p style={{ fontWeight: '700', fontSize: '14px', margin: 0 }}>For Real Enterprises</p>
+                            <p style={{ fontSize: '11px', color: '#555', margin: '4px 0 0' }}>Authorised Signatory</p>
                         </div>
                     </div>
 
-                    <div style={{borderTop: '2px solid #d1d5db', paddingTop: '24px', marginTop: '32px', textAlign: 'center', fontSize: '12px', color: '#4b5563'}}>
-                        <p style={{fontWeight: '600', color: '#374151', marginBottom: '8px', margin: '0 0 8px 0'}}>Thank you for your business!</p>
-                        <p style={{margin: '0'}}>This is a computer-generated invoice. No signature is required.</p>
-                        <p style={{marginTop: '8px', margin: '8px 0 0 0'}}>For inquiries, please contact Real Enterprises</p>
+                    <div style={{ borderTop: '1px solid #ccc', marginTop: '20px', paddingTop: '10px', textAlign: 'center', fontSize: '11px', color: '#777' }}>
+                        <p style={{ margin: 0 }}>This is a computer-generated invoice. | Real Enterprises, Pimpri, Pune – 411017</p>
                     </div>
                 </div>
             );
 
             return (
-                <div className="min-h-screen bg-gray-50 flex flex-col">
-                    <header className="bg-white shadow-md border-b-4 border-blue-600">
-                        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <img src={logoUrl} alt="Real Enterprises Logo" className="h-12 w-12 object-contain" />
-                                <div>
-                                    <h1 className="text-2xl font-bold text-blue-900">Real Enterprises</h1>
-                                    <p className="text-xs text-gray-600">Facility & Labour Management Experts</p>
-                                </div>
+                <div className="min-h-screen bg-gray-100 flex flex-col">
+                    {/* Header */}
+                    <header style={{ background: 'white', borderBottom: '4px solid #b91c1c' }} className="shadow-md">
+                        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h1 style={{ fontFamily: 'Merriweather, serif', color: '#b91c1c', fontWeight: '900', fontSize: '22px', margin: 0 }}>REAL ENTERPRISES</h1>
+                                <p className="text-xs text-gray-500 mt-0.5">House Keeping & All Labour Supplier</p>
                             </div>
-
-                            <div className="flex items-center gap-6">
-                                <button
-                                    onClick={() => { setCurrentPage('editor'); setPreviewInvoice(null); }}
-                                    className={`px-4 py-2 rounded-lg font-medium transition ${
-                                        currentPage === 'editor'
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                    }`}
-                                >
-                                    New Invoice
-                                </button>
-
-                                <button
-                                    onClick={() => setCurrentPage('history')}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition ${
-                                        currentPage === 'history'
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                    }`}
-                                >
-                                    ⏱️ History
-                                </button>
-
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setShowProfileMenu(!showProfileMenu)}
-                                        className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition"
-                                    >
-                                        Profile <span style={{fontSize: '12px'}}>▼</span>
-                                    </button>
-                                    {showProfileMenu && (
-                                        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                                            <div className="px-4 py-3 border-b text-sm text-gray-700">
-                                                <p className="font-semibold">Admin User</p>
-                                                <p className="text-xs text-gray-600">admin@realenterprises.com</p>
-                                            </div>
-                                            <button
-                                                onClick={() => { setShowProfileMenu(false); alert('Sign out functionality coming soon!'); }}
-                                                className="w-full flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 transition text-left"
-                                            >
-                                                🚪 Sign Out
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
+                            <div className="flex gap-3">
+                                <button onClick={() => { setPage('editor'); setPreview(null); }} className={`px-4 py-2 rounded font-semibold text-sm transition ${page === 'editor' ? 'bg-red-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>✏️ New Invoice</button>
+                                <button onClick={() => setPage('history')} className={`px-4 py-2 rounded font-semibold text-sm transition ${page === 'history' ? 'bg-red-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>📋 History ({history.length})</button>
                             </div>
                         </div>
                     </header>
 
-                    <main className="flex-1 max-w-7xl w-full mx-auto px-8 py-8">
-                        {currentPage === 'editor' && (
-                            <div>
-                                <div className="mb-8">
-                                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Create New Invoice</h2>
-                                    <p className="text-gray-600">Fill in the details below to create a new invoice</p>
-                                </div>
+                    <main className="flex-1 max-w-5xl w-full mx-auto px-4 py-8">
 
-                                <div className="bg-white rounded-lg shadow-md p-6 mb-8 border-l-4 border-blue-600">
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        {/* EDITOR */}
+                        {page === 'editor' && (
+                            <div className="space-y-6">
+                                <h2 className="text-2xl font-bold text-gray-800">Create Invoice</h2>
+
+                                {/* Recipient */}
+                                <div className="bg-white rounded-lg shadow p-6 border-l-4" style={{ borderColor: '#b91c1c' }}>
+                                    <h3 className="font-bold text-gray-700 mb-4 uppercase text-sm tracking-wide">Recipient Details</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Client Name</label>
-                                            <input
-                                                type="text"
-                                                value={clientInfo.name}
-                                                onChange={(e) => setClientInfo({ ...clientInfo, name: e.target.value })}
-                                                placeholder="Enter client name"
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                            />
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">To (Name / Society / Company)</label>
+                                            <input value={toName} onChange={e => setToName(e.target.value)} placeholder="e.g. ABC Society, Wakad" className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-400 outline-none" />
                                         </div>
-                                        <div className="md:col-span-2">
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Client Address</label>
-                                            <input
-                                                type="text"
-                                                value={clientInfo.address}
-                                                onChange={(e) => setClientInfo({ ...clientInfo, address: e.target.value })}
-                                                placeholder="Enter client address"
-                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                            />
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-600 mb-1">Address</label>
+                                            <input value={toAddress} onChange={e => setToAddress(e.target.value)} placeholder="Full address" className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-400 outline-none" />
                                         </div>
+                                    </div>
+                                    <div className="mt-4">
+                                        <label className="block text-xs font-semibold text-gray-600 mb-1">Opening Paragraph <span className="text-gray-400 font-normal">(optional)</span></label>
+                                        <textarea value={serviceContext} onChange={e => setServiceContext(e.target.value)} rows={2} placeholder="e.g. We are pleased to inform you that we providing good housekeeping services. From last seven years our persons deployed in commercial building (GO square B Wing Wakad)" className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-red-400 outline-none resize-none" />
                                     </div>
                                 </div>
 
-                                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-4">Line Items</h3>
+                                {/* Line Items */}
+                                <div className="bg-white rounded-lg shadow p-6">
+                                    <h3 className="font-bold text-gray-700 mb-4 uppercase text-sm tracking-wide">Line Items</h3>
                                     <div className="overflow-x-auto">
-                                        <table className="w-full text-sm">
+                                        <table className="w-full text-sm border-collapse">
                                             <thead>
-                                                <tr className="bg-blue-900 text-white">
-                                                    <th className="px-4 py-3 text-left font-semibold">Description</th>
-                                                    <th className="px-4 py-3 text-right font-semibold">Rate (₹)</th>
-                                                    <th className="px-4 py-3 text-center font-semibold">GST %</th>
-                                                    <th className="px-4 py-3 text-right font-semibold">GST (₹)</th>
-                                                    <th className="px-4 py-3 text-right font-semibold">Total (₹)</th>
-                                                    <th className="px-4 py-3 text-center font-semibold">Action</th>
+                                                <tr className="bg-gray-800 text-white">
+                                                    <th className="px-3 py-2 text-center border border-gray-600 w-12">Sr.</th>
+                                                    <th className="px-3 py-2 text-left border border-gray-600">Details</th>
+                                                    <th className="px-3 py-2 text-center border border-gray-600 w-20">Per Person</th>
+                                                    <th className="px-3 py-2 text-right border border-gray-600 w-24">Rate (₹)</th>
+                                                    <th className="px-3 py-2 text-center border border-gray-600 w-24">Duty</th>
+                                                    <th className="px-3 py-2 text-right border border-gray-600 w-28">Payment (₹)</th>
+                                                    <th className="px-3 py-2 text-center border border-gray-600 w-12">Del</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {items.map((item, index) => (
-                                                    <tr key={item.id} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                                                        <td className="px-4 py-3">
-                                                            <input
-                                                                type="text"
-                                                                value={item.description}
-                                                                onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                                                                placeholder="Item description"
-                                                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:ring-2 focus:ring-blue-400 outline-none"
-                                                            />
+                                                {items.map((item, idx) => (
+                                                    <tr key={item.id} className={idx % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                                                        <td className="px-2 py-1 border border-gray-300">
+                                                            <input value={item.srNo} onChange={e => handleItemChange(item.id, 'srNo', e.target.value)} className="w-full text-center border border-gray-200 rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-red-300" />
                                                         </td>
-                                                        <td className="px-4 py-3 text-right">
-                                                            <input
-                                                                type="number"
-                                                                value={item.rate}
-                                                                onChange={(e) => handleItemChange(item.id, 'rate', e.target.value)}
-                                                                placeholder="0"
-                                                                min="0"
-                                                                step="0.01"
-                                                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-right focus:ring-2 focus:ring-blue-400 outline-none"
-                                                            />
+                                                        <td className="px-2 py-1 border border-gray-300">
+                                                            <textarea value={item.description} onChange={e => handleItemChange(item.id, 'description', e.target.value)} rows={2} className="w-full border border-gray-200 rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-red-300 resize-none" placeholder="Description" />
                                                         </td>
-                                                        <td className="px-4 py-3 text-center">
-                                                            <input
-                                                                type="number"
-                                                                value={item.gstPercent}
-                                                                onChange={(e) => handleItemChange(item.id, 'gstPercent', e.target.value)}
-                                                                placeholder="0"
-                                                                min="0"
-                                                                max="100"
-                                                                step="0.01"
-                                                                className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-center focus:ring-2 focus:ring-blue-400 outline-none"
-                                                            />
+                                                        <td className="px-2 py-1 border border-gray-300">
+                                                            <input value={item.perPerson} onChange={e => handleItemChange(item.id, 'perPerson', e.target.value)} className="w-full text-center border border-gray-200 rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-red-300" placeholder="01" />
                                                         </td>
-                                                        <td className="px-4 py-3 text-right text-gray-700 font-semibold text-xs">₹ {parseFloat(item.gstAmount).toFixed(2)}</td>
-                                                        <td className="px-4 py-3 text-right text-gray-900 font-bold text-xs">₹ {parseFloat(item.total).toFixed(2)}</td>
-                                                        <td className="px-4 py-3 text-center">
-                                                            <button
-                                                                onClick={() => removeItem(item.id)}
-                                                                className="flex items-center justify-center gap-1 bg-red-100 hover:bg-red-200 text-red-700 px-2 py-1 rounded text-xs transition mx-auto"
-                                                            >
-                                                                🗑️
-                                                            </button>
+                                                        <td className="px-2 py-1 border border-gray-300">
+                                                            <input type="number" value={item.rate} onChange={e => handleItemChange(item.id, 'rate', e.target.value)} className="w-full text-right border border-gray-200 rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-red-300" placeholder="0" />
+                                                        </td>
+                                                        <td className="px-2 py-1 border border-gray-300">
+                                                            <input value={item.duty} onChange={e => handleItemChange(item.id, 'duty', e.target.value)} className="w-full text-center border border-gray-200 rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-red-300" placeholder="8 Hrs." />
+                                                        </td>
+                                                        <td className="px-2 py-1 border border-gray-300">
+                                                            <input type="number" value={item.payment} onChange={e => handleItemChange(item.id, 'payment', e.target.value)} className="w-full text-right border border-gray-200 rounded px-1 py-1 text-xs outline-none focus:ring-1 focus:ring-red-300" placeholder="0" />
+                                                        </td>
+                                                        <td className="px-2 py-1 border border-gray-300 text-center">
+                                                            <button onClick={() => removeItem(item.id)} className="text-red-500 hover:text-red-700 text-lg">🗑</button>
                                                         </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                     </div>
-
-                                    <button
-                                        onClick={addItem}
-                                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition mt-4"
-                                    >
-                                        ➕ Add Item
-                                    </button>
+                                    <button onClick={addItem} className="mt-4 flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold text-sm transition">➕ Add Row</button>
                                 </div>
 
-                                <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                                    <div className="flex justify-end">
-                                        <div className="w-96">
-                                            <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
-                                                <div className="text-right text-sm text-gray-700 font-semibold">Subtotal:</div>
-                                                <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(totals.subtotal).toFixed(2)}</div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 py-3 border-t border-gray-300">
-                                                <div className="text-right text-sm text-gray-700 font-semibold">Total GST:</div>
-                                                <div className="text-right text-sm text-gray-900 font-bold">₹ {parseFloat(totals.totalGST).toFixed(2)}</div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4 py-3 px-4 bg-blue-900 text-white rounded-lg">
-                                                <div className="text-right text-base font-bold">Amount Due:</div>
-                                                <div className="text-right text-lg font-bold">₹ {parseFloat(totals.finalAmount).toFixed(2)}</div>
-                                            </div>
-                                        </div>
+                                {/* GST + Options */}
+                                <div className="bg-white rounded-lg shadow p-6 flex flex-wrap gap-6 items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <label className="text-sm font-semibold text-gray-700">GST %</label>
+                                        <input type="number" value={gstPercent} onChange={e => setGstPercent(parseFloat(e.target.value) || 0)} className="w-20 border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-red-400 outline-none" />
+                                        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                                            <input type="checkbox" checked={showScope} onChange={e => setShowScope(e.target.checked)} className="rounded" />
+                                            Include Scope of Work
+                                        </label>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm text-gray-500">Subtotal: <span className="font-bold text-gray-800">₹ {subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></p>
+                                        <p className="text-sm text-gray-500">GST ({gstPercent}%): <span className="font-bold text-gray-800">₹ {gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span></p>
+                                        <p className="text-lg font-bold mt-1" style={{ color: '#b91c1c' }}>Total: ₹ {total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                     </div>
                                 </div>
 
-                                <div className="flex gap-3 justify-end">
-                                    <button
-                                        onClick={resetForm}
-                                        className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition"
-                                    >
-                                        🔄 Reset
-                                    </button>
-                                    <button
-                                        onClick={() => openPreview()}
-                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                                    >
-                                        👁️ Preview
-                                    </button>
+                                <div className="flex justify-end gap-3">
+                                    <button onClick={openPreview} className="flex items-center gap-2 text-white px-6 py-3 rounded font-semibold transition text-sm" style={{ background: '#b91c1c' }}>👁️ Preview Invoice</button>
                                 </div>
                             </div>
                         )}
 
-                        {currentPage === 'history' && (
+                        {/* PREVIEW */}
+                        {page === 'preview' && preview && (
                             <div>
-                                <div className="mb-8">
-                                    <h2 className="text-3xl font-bold text-gray-800 mb-2">Invoice History</h2>
-                                    <p className="text-gray-600">View and manage all invoices created</p>
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-2xl font-bold text-gray-800">Invoice Preview</h2>
+                                    <button onClick={() => { setPage('editor'); setPreview(null); }} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded font-semibold text-sm">✕ Back</button>
                                 </div>
+                                <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+                                    <InvoiceDoc inv={preview} />
+                                </div>
+                                <div className="flex gap-3 justify-center flex-wrap">
+                                    <button onClick={downloadPDF} className="flex items-center gap-2 text-white px-6 py-3 rounded font-semibold transition text-sm" style={{ background: '#b91c1c' }}>📥 Download PDF</button>
+                                    <button onClick={saveInvoice} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded font-semibold transition text-sm">💾 Save Invoice</button>
+                                </div>
+                            </div>
+                        )}
 
-                                {invoiceHistory.length === 0 ? (
-                                    <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                                        <p className="text-gray-600 text-lg">No invoices found. Create your first invoice!</p>
-                                    </div>
+                        {/* HISTORY */}
+                        {page === 'history' && (
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 mb-6">Invoice History</h2>
+                                {history.length === 0 ? (
+                                    <div className="bg-white rounded-lg shadow p-12 text-center text-gray-500">No invoices saved yet.</div>
                                 ) : (
-                                    <div className="grid gap-4">
-                                        {invoiceHistory.map((invoice, index) => (
-                                            <div key={index} className="bg-white rounded-lg shadow-md p-6 flex items-center justify-between border-l-4 border-blue-600">
+                                    <div className="space-y-4">
+                                        {history.map((inv, idx) => (
+                                            <div key={idx} className="bg-white rounded-lg shadow p-5 flex items-center justify-between border-l-4" style={{ borderColor: '#b91c1c' }}>
                                                 <div>
-                                                    <h3 className="text-lg font-bold text-gray-800">Invoice INV-{invoice.invoiceNumber}</h3>
-                                                    <p className="text-sm text-gray-600 mt-1">Client: {invoice.clientInfo.name}</p>
-                                                    <p className="text-sm text-gray-600">{invoice.date} at {invoice.time}</p>
-                                                    <p className="text-lg font-bold text-blue-600 mt-2">₹ {parseFloat(invoice.totals.finalAmount).toFixed(2)}</p>
+                                                    <p className="font-bold text-gray-800">INV-{inv.invoiceNumber} — {inv.toName || 'Unknown'}</p>
+                                                    <p className="text-sm text-gray-500">{inv.date}</p>
+                                                    <p className="font-bold text-lg mt-1" style={{ color: '#b91c1c' }}>₹ {parseFloat(inv.total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                                                 </div>
                                                 <div className="flex gap-3">
-                                                    <button
-                                                        onClick={() => openPreview(invoice)}
-                                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition"
-                                                    >
-                                                        👁️ View
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteInvoice(index)}
-                                                        className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition"
-                                                    >
-                                                        🗑️ Delete
-                                                    </button>
+                                                    <button onClick={() => { setPreview(inv); setPage('preview'); }} className="text-white px-4 py-2 rounded font-semibold text-sm transition" style={{ background: '#b91c1c' }}>👁️ View</button>
+                                                    <button onClick={() => setHistory(history.filter((_, i) => i !== idx))} className="bg-gray-200 hover:bg-red-100 text-red-700 px-4 py-2 rounded font-semibold text-sm transition">🗑 Delete</button>
                                                 </div>
                                             </div>
                                         ))}
@@ -540,105 +394,18 @@
                                 )}
                             </div>
                         )}
-
-                        {currentPage === 'preview' && previewInvoice && (
-                            <div>
-                                <div className="mb-6 flex items-center justify-between">
-                                    <div>
-                                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Invoice Preview</h2>
-                                        <p className="text-gray-600">Review before downloading or printing</p>
-                                    </div>
-                                    <button
-                                        onClick={() => { setCurrentPage('editor'); setPreviewInvoice(null); }}
-                                        className="flex items-center gap-2 bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition"
-                                    >
-                                        ✕ Close
-                                    </button>
-                                </div>
-
-                                <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
-                                    <InvoicePreviewContent invoice={previewInvoice} />
-                                </div>
-
-                                <div className="flex gap-3 justify-center flex-wrap">
-                                    <button
-                                        onClick={downloadPDF}
-                                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                                    >
-                                        📥 Download PDF
-                                    </button>
-                                    <button
-                                        onClick={printInvoice}
-                                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                                    >
-                                        🖨️ Print Invoice
-                                    </button>
-                                    {!invoiceHistory.some(inv => inv.invoiceNumber === previewInvoice.invoiceNumber) && (
-                                        <button
-                                            onClick={saveInvoice}
-                                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition"
-                                        >
-                                            Save Invoice
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
                     </main>
 
-                    <footer className="bg-blue-900 text-white mt-12">
-                        <div className="max-w-7xl mx-auto px-8 py-8">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                                <div>
-                                    <h4 className="font-bold text-lg mb-3">Real Enterprises</h4>
-                                    <p className="text-blue-200 text-sm">Facility & Labour Management Experts</p>
-                                    <p className="text-blue-200 text-sm mt-2">Professional invoicing solutions for modern businesses</p>
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-lg mb-3">Quick Links</h4>
-                                    <ul className="text-blue-200 text-sm space-y-2">
-                                        <li><button className="hover:text-white transition">Create Invoice</button></li>
-                                        <li><button className="hover:text-white transition">View History</button></li>
-                                        <li><button className="hover:text-white transition">Support</button></li>
-                                    </ul>
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-lg mb-3">Contact Info</h4>
-                                    <p className="text-blue-200 text-sm">Registration No: RE-2021-IND-0759</p>
-                                    <p className="text-blue-200 text-sm">GSTIN: 29ABCDE1234F2Z7</p>
-                                    <p className="text-blue-200 text-sm mt-3">Email: info@realenterprises.com</p>
-                                </div>
-                            </div>
-                            <div className="border-t border-blue-800 pt-6 text-center text-blue-200 text-sm">
-                                <p>&copy; 2024 Real Enterprises. All rights reserved.</p>
-                                <p className="mt-2">Professional Invoicing Solutions</p>
-                            </div>
-                        </div>
+                    <footer style={{ background: '#111', color: '#ccc' }} className="mt-12 py-6 text-center text-xs">
+                        <p className="font-bold text-white" style={{ fontFamily: 'Merriweather, serif' }}>REAL ENTERPRISES</p>
+                        <p className="mt-1">GST: {COMPANY.gst} &nbsp;|&nbsp; PAN: {COMPANY.pan} &nbsp;|&nbsp; {COMPANY.mob}</p>
+                        <p className="mt-1">{COMPANY.address}</p>
                     </footer>
                 </div>
             );
         };
 
-        ReactDOM.render(<InvoiceGenerator />, document.getElementById('root'));
+        ReactDOM.render(<InvoiceApp />, document.getElementById('root'));
     </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
-
-        * {
-            font-family: 'Poppins', sans-serif;
-        }
-
-        @media print {
-            body {
-                background: white;
-            }
-        }
-
-        input[type="number"]::-webkit-outer-spin-button,
-        input[type="number"]::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-    </style>
 </body>
 </html>
